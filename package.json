@@ -2,7 +2,15 @@
   "name": "email-tracker",
   "version": "1.0.0",
   "description": "A simple web server, which notifies subscribers about requests.",
+  "author": "Kaspar Etter",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KasparEtter/email-tracker/issues"
+  },
+  "repository": {
+      "type": "git",
+      "url": "git+https://github.com/KasparEtter/email-tracker.git"
+  },
   "main": "main.js",
   "scripts": {
     "start": "tsc && node main.js"

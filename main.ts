@@ -2,12 +2,19 @@ import http from 'http';
 import https from 'https';
 import WebSocket from 'ws';
 
-function fetchRemoteFile(url: string): Promise<string> {
+function fetchTextFile(url: string, maxSize = 1000): Promise<string> {
     return new Promise((resolve, reject) => {
         https.get(url, (response: http.IncomingMessage) => {
+            const contentType = response.headers['content-type'];
+            if (contentType !== undefined && !contentType.startsWith('text/plain')) {
+                reject('Wrong content type.');
+            }
             let data = '';
             response.on('data', (chunk) => {
                 data += chunk;
+                if (data.length > maxSize) {
+                    reject('Maximum size exceeded.');
+                }
             });
             response.on('end', () => {
                 resolve(data);
@@ -59,10 +66,10 @@ const server = http.createServer(async (request, response) => {
         });
         response.end();
     } else if (/^\/mta-sts\.txt\?domain=([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)+[a-z][-a-z0-9]{0,61}[a-z0-9]$/.test(path)) {
+        const domain = path.split('=')[1];
+        const url = 'https://mta-sts.' + domain + '/.well-known/mta-sts.txt';
         try {
-            const domain = path.split('=')[1];
-            const url = 'https://mta-sts.' + domain + '/.well-known/mta-sts.txt';
-            const file = await fetchRemoteFile(url);
+            const file = await fetchTextFile(url);
             response.writeHead(200, {
                 'Content-Type': 'text/plain',
                 'Content-Length': file.length,
@@ -72,6 +79,7 @@ const server = http.createServer(async (request, response) => {
             response.write(file);
             response.end();
         } catch (error) {
+            console.warn(`An error occurred when fetching the MTA-STS file for ${domain}: ${error.message ? error.message : error.toString()}`);
             response.writeHead(404, {
                 'Access-Control-Allow-Origin': '*',
             });

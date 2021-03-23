@@ -72,7 +72,9 @@ const server = http.createServer(async (request, response) => {
             response.write(file);
             response.end();
         } catch (error) {
-            response.writeHead(404);
+            response.writeHead(404, {
+                'Access-Control-Allow-Origin': '*',
+            });
             response.end();
         }
     } else {

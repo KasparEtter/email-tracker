@@ -1,5 +1,22 @@
 import http from 'http';
+import https from 'https';
 import WebSocket from 'ws';
+
+function fetchRemoteFile(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        https.get(url, (response: http.IncomingMessage) => {
+            let data = '';
+            response.on('data', (chunk) => {
+                data += chunk;
+            });
+            response.on('end', () => {
+                resolve(data);
+            });
+        }).on('error', (error: Error) => {
+            reject(error);
+        });
+    });
+}
 
 const pixel = [ 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
     0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
@@ -21,9 +38,9 @@ function notify(request: http.IncomingMessage, token: string, target: string): v
     }
 }
 
-const server = http.createServer((request, response) => {
-    const path = request.url;
-    if (path && /^\/[a-z0-9]+\.png$/i.test(path)) {
+const server = http.createServer(async (request, response) => {
+    const path = request.url!;
+    if (/^\/[a-zA-Z0-9]+\.png$/.test(path)) {
         const token = path.slice(1, -4);
         notify(request, token, 'Image');
         response.writeHead(200, {
@@ -31,8 +48,8 @@ const server = http.createServer((request, response) => {
             'Content-Length': pixel.length,
         });
         response.write(buffer);
-        response.end();    
-    } else if (path && /^\/[a-z0-9]+\/.*$/i.test(path)) {
+        response.end();
+    } else if (/^\/[a-zA-Z0-9]+\/.*$/.test(path)) {
         const index = path.indexOf('/', 1);
         const token = path.substring(1, index);
         const link = path.substring(index + 1);
@@ -40,7 +57,24 @@ const server = http.createServer((request, response) => {
         response.writeHead(307, {
             'Location': decodeURIComponent(link),
         });
-        response.end();    
+        response.end();
+    } else if (/^\/mta-sts\.txt\?domain=([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)+[a-z][-a-z0-9]{0,61}[a-z0-9]$/.test(path)) {
+        try {
+            const domain = path.split('=')[1];
+            const url = 'https://mta-sts.' + domain + '/.well-known/mta-sts.txt';
+            const file = await fetchRemoteFile(url);
+            response.writeHead(200, {
+                'Content-Type': 'text/plain',
+                'Content-Length': file.length,
+                'Content-Disposition': 'inline',
+                'Access-Control-Allow-Origin': '*',
+            });
+            response.write(file);
+            response.end();
+        } catch (error) {
+            response.writeHead(404);
+            response.end();
+        }
     } else {
         response.writeHead(404);
         response.end();

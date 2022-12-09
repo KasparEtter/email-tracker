@@ -79,7 +79,6 @@ const server = http.createServer(async (request, response) => {
             response.write(file);
             response.end();
         } catch (error) {
-            console.warn(`An error occurred when fetching the MTA-STS file for ${domain}: ${error instanceof Error ? error.message : error}`);
             response.writeHead(404, {
                 'Access-Control-Allow-Origin': '*',
             });

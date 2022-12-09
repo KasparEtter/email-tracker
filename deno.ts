@@ -43,6 +43,7 @@ async function handle(request: Request, connection: ConnInfo): Promise<Response>
                 // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#Status_codes
                 previousSocket.close(1001, 'Another client subscribed to this token.');
             }
+            // https://deno.com/blog/deploy-streams#websockets
             const { socket, response } = Deno.upgradeWebSocket(request);
             sockets[token] = socket;
             socket.onclose = () => sockets[token] = undefined;
@@ -93,7 +94,6 @@ async function handle(request: Request, connection: ConnInfo): Promise<Response>
                 },
             });
         } catch (error) {
-            console.warn(`An error occurred when fetching the MTA-STS file for ${domain}: ${error instanceof Error ? error.message : error}`);
             return new Response(undefined, {
                 status: 404,
                 headers: {
